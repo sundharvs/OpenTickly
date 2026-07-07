@@ -1,4 +1,4 @@
-import React, { type ReactElement, useEffect, useRef, useState } from "react";
+import React, { type ReactElement, useContext, useEffect, useRef, useState } from "react";
 import { Calendar, Views } from "react-big-calendar";
 import withDragAndDropModule from "react-big-calendar/lib/addons/dragAndDrop";
 import type { EventProps, SlotInfo } from "react-big-calendar";
@@ -38,6 +38,27 @@ if (!withDragAndDrop) {
 }
 
 const DnDCalendar = withDragAndDrop<CalendarGridEvent>(Calendar);
+
+const CalendarOnStartEntryContext = React.createContext<(() => void) | undefined>(undefined);
+
+const DayColumnWrapperBridge = React.forwardRef<HTMLDivElement, Record<string, unknown>>(
+  function DayColumnWrapperBridge(props, ref) {
+    const onStartEntry = useContext(CalendarOnStartEntryContext);
+    return (
+      <CalendarDayColumnWrapper
+        ref={ref}
+        className={props.className as string | undefined}
+        isNow={Boolean(
+          typeof props.className === "string" && (props.className as string).includes("rbc-now"),
+        )}
+        onStartEntry={onStartEntry}
+        style={props.style as React.CSSProperties | undefined}
+      >
+        {props.children as React.ReactNode}
+      </CalendarDayColumnWrapper>
+    );
+  },
+);
 
 export function CalendarView({
   calendarHours = "all",
@@ -286,6 +307,7 @@ export function CalendarView({
       data-testid="timer-calendar-view"
       ref={wrapperRef}
     >
+      <CalendarOnStartEntryContext.Provider value={onStartEntry}>
       <DnDCalendar
         components={calendarComponents}
         date={calendarDate}
@@ -398,6 +420,7 @@ export function CalendarView({
         view={currentView}
         views={[Views.WEEK, Views.WORK_WEEK, Views.DAY]}
       />
+      </CalendarOnStartEntryContext.Provider>
       {contextMenuState ? (
         <CalendarEntryContextMenu
           entry={contextMenuState.entry}

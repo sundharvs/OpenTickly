@@ -1,4 +1,4 @@
-import { type ReactElement, useRef } from "react";
+import { type ReactElement, useEffect, useRef } from "react";
 
 import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared/api/generated/public-track/types.gen.ts";
 import {
@@ -96,6 +96,17 @@ export function ConnectedCalendarView({
   const viewsRef = useRef(views);
   viewsRef.current = views;
 
+  const wasEditorOpenAtPointerDownRef = useRef(false);
+  useEffect(() => {
+    const handlePointerDownCapture = () => {
+      wasEditorOpenAtPointerDownRef.current = useTimerViewStore.getState().selectedEntry != null;
+    };
+    document.addEventListener("mousedown", handlePointerDownCapture, { capture: true });
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDownCapture, { capture: true });
+    };
+  }, []);
+
   const handleEntryEdit = (
     entry: GithubComTogglTogglApiInternalModelsTimeEntry,
     anchorRect: DOMRect,
@@ -123,9 +134,7 @@ export function ConnectedCalendarView({
 
   const handleCalendarSlotCreate = (slot: { end: Date; start: Date }) => {
     const store = useTimerViewStore.getState();
-    if (store.selectedEntry != null) {
-      store.closeEditor();
-      store.setCalendarDraftEntry(null);
+    if (store.selectedEntry != null || wasEditorOpenAtPointerDownRef.current) {
       return;
     }
 
