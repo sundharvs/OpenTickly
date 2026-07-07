@@ -54,7 +54,7 @@ function CalendarEventCardImpl({
   useEffect(() => {
     if (!isDraft || !cardRef.current) return;
     onEditEntry?.(entry, cardRef.current.getBoundingClientRect());
-  }, [isDraft]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isDraft, entry.start, entry.stop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
