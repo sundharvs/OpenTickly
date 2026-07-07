@@ -6,12 +6,14 @@ import {
   useCreateWorkspaceFavoriteMutation,
   useCurrentTimeEntryQuery,
   useDeleteTimeEntryMutation,
+  useExternalCalendarEventsQuery,
   useStartTimeEntryMutation,
   useStopTimeEntryMutation,
   useUpdateTimeEntryMutation,
 } from "../../shared/query/web-shell.ts";
 import { copyToClipboard } from "../../shared/lib/clipboard.ts";
 import { resolveTimeEntryProjectId, toTrackIso } from "./time-entry-ids.ts";
+import type { ExternalCalendarEvent } from "./calendar-types.ts";
 import { CalendarView, type CalendarContextMenuAction } from "./CalendarView.tsx";
 import { SurfaceMessage } from "./overview-views.tsx";
 import { useUserPreferences } from "../../shared/query/useUserPreferences.ts";
@@ -54,6 +56,11 @@ export function ConnectedCalendarView({
 
   const calendarSubview = useTimerViewStore((s) => s.calendarSubview);
   const calendarDraftEntry = useTimerViewStore((s) => s.calendarDraftEntry);
+
+  const externalEventsQuery = useExternalCalendarEventsQuery(
+    formatTrackQueryDate(weekDays[0]),
+    formatTrackQueryDate(weekDays[weekDays.length - 1]),
+  );
 
   const selectedSubviewDateIso =
     calendarSubview === "day" ? formatTrackQueryDate(selectedWeekDate) : undefined;
@@ -235,6 +242,35 @@ export function ConnectedCalendarView({
       });
   };
 
+  const onStartEntryFromExternal = (event: ExternalCalendarEvent) => {
+    void mutRef.current.start
+      .mutateAsync({
+        billable: false,
+        description: event.title,
+        projectId: null,
+        start: new Date().toISOString(),
+        tagIds: [],
+        taskId: null,
+      })
+      .then(() => {
+        useTimerViewStore.getState().setRunningDescription(event.title);
+      });
+  };
+
+  const onCopyExternalEventAsEntry = (event: ExternalCalendarEvent) => {
+    const durationSeconds = Math.round((event.end.getTime() - event.start.getTime()) / 1000);
+    void mutRef.current.create.mutateAsync({
+      billable: false,
+      description: event.title,
+      duration: durationSeconds,
+      projectId: null,
+      start: toTrackIso(event.start),
+      stop: toTrackIso(event.end),
+      tagIds: [],
+      taskId: null,
+    });
+  };
+
   const onContextMenu = (
     entry: GithubComTogglTogglApiInternalModelsTimeEntry,
     action: CalendarContextMenuAction,
@@ -290,14 +326,17 @@ export function ConnectedCalendarView({
       calendarHours={calendarHours}
       draftEntry={calendarDraftEntry}
       entries={views.visibleEntries}
+      externalEvents={externalEventsQuery.data ?? []}
       onContinueEntry={onContinueEntry}
       onContextMenuAction={onContextMenu}
+      onCopyExternalEventAsEntry={onCopyExternalEventAsEntry}
       onEditEntry={handleEntryEdit}
       onMoveEntry={onMoveEntry}
       onResizeEntry={onResizeEntry}
       onSelectSlot={handleCalendarSlotCreate}
       onSelectSubviewDate={onSelectSubviewDate}
       onStartEntry={onStartEntry}
+      onStartEntryFromExternal={onStartEntryFromExternal}
       runningEntry={runningEntry}
       selectedSubviewDateIso={selectedSubviewDateIso}
       subview={calendarSubview}

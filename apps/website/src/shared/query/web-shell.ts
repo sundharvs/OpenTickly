@@ -111,6 +111,15 @@ export {
 } from "./web-shell-profile.ts";
 
 export {
+  connectCalendarProvider,
+  useCalendarIntegrationsQuery,
+  useCalendarCalendarsQuery,
+  useToggleCalendarSelectionMutation,
+  useDisconnectCalendarIntegrationMutation,
+  useExternalCalendarEventsQuery,
+} from "./web-shell-calendar.ts";
+
+export {
   timeEntriesQueryKey,
   useTimeEntriesQuery,
   useCurrentTimeEntryQuery,

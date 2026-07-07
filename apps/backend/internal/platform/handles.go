@@ -24,6 +24,15 @@ type Handles struct {
 	FileStore FileStoreHandle
 	Jobs      *JobRunner
 	Webhook   WebhookHandle
+	Calendar  CalendarHandle
+}
+
+// CalendarHandle carries the Google OAuth client credentials through to the
+// calendar module. Both fields are optional; an empty ClientID means the
+// integration is unconfigured on this instance.
+type CalendarHandle struct {
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
 func NewHandles(cfg platformconfig.StartupConfig) *Handles {
@@ -55,6 +64,10 @@ func NewHandles(cfg platformconfig.StartupConfig) *Handles {
 				AllowPrivateTargets: cfg.Webhook.AllowPrivateTargets,
 			}),
 			allowPrivateTargets: cfg.Webhook.AllowPrivateTargets,
+		},
+		Calendar: CalendarHandle{
+			GoogleClientID:     cfg.Calendar.GoogleClientID,
+			GoogleClientSecret: cfg.Calendar.GoogleClientSecret,
 		},
 	}
 }

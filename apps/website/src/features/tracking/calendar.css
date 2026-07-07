@@ -70,6 +70,24 @@
   background: transparent;
 }
 
+/* RBC's own resource-view CSS (react-big-calendar.css) makes the gutter
+   columns light-themed and sticky by default — `background-color: white`,
+   `border-right: 1px solid #ddd`, `position: sticky`, `z-index: 10` — only
+   once `.rbc-time-view-resources` is present, which our external-calendar-
+   event lane (see the "External calendar lane" block below) turns on.
+   Override the theme back to dark, and drop the sticky/z-index: our layout
+   has no horizontal scroll to stick against, and the elevated z-index was
+   stacking the gutter above the current-time-indicator play button
+   (CalendarDayColumnWrapper.tsx positions it at `left: -7px`, intentionally
+   overlapping the gutter edge), silently swallowing its clicks. */
+.rbc-time-view-resources .rbc-time-gutter,
+.rbc-time-view-resources .rbc-time-header-gutter {
+  background-color: var(--track-surface);
+  border-right: none;
+  position: static;
+  z-index: auto;
+}
+
 .rbc-time-gutter .rbc-timeslot-group {
   border-bottom: 1px solid transparent;
   min-height: 60px;
@@ -126,6 +144,57 @@
    timeslot-group border-left instead */
 .rbc-day-slot + .rbc-day-slot {
   border-left: none;
+}
+
+/* ── External calendar lane (RBC resource view) ──
+ * Each day column is split into two RBC "resources": the time-entry lane
+ * and a narrower external-calendar-event lane, laid out side by side with
+ * fully independent overlap layouts (matches Toggl's production behavior —
+ * a time entry overlapping an external event never changes either one's
+ * width). Enabling `resourceGroupingLayout` makes RBC render this via
+ * TimeGridHeaderResources, which adds two extra rows per day header (a
+ * resource-title row and an all-day row) that we don't use — our own
+ * `header` component already renders once per day above them — so we
+ * collapse both.
+ */
+.rbc-time-header-content.rbc-resource-grouping > .rbc-row:not(.rbc-time-header-cell) {
+  display: none;
+}
+
+/* RBC's resource view hard-codes `min-width: 140px` on every resource
+   day-slot (react-big-calendar.css). That's the right width for the
+   time-entry lane but forces the external lane to match it 1:1 — override
+   it so `flex-grow` (below) can size the two lanes ~2:1, matching the
+   77px:153px ratio measured on the production Toggl calendar. */
+.rbc-time-view-resources .rbc-day-slot[data-resource-id="external"] {
+  min-width: 48px;
+}
+
+/* RBC sets `style={flex:1}` inline on these resource-lane wrappers, so the
+   override needs !important to win over the inline style. */
+.rbc-time-content > div > div:has(> .rbc-day-slot[data-resource-id="entries"]) {
+  flex: 2 !important;
+  /* Same `.rbc-time-content > * + * > *` rule as below also puts a light
+     #ddd day-boundary border on this wrapper. Before resource view, that
+     border landed directly on `.rbc-day-slot` and was stripped by the
+     `.rbc-day-slot + .rbc-day-slot` rule above; now it lands one level up
+     (on this wrapper) where that selector no longer matches. Strip it here
+     instead — day separators are drawn by the dark `.rbc-timeslot-group`
+     border-left, not this one. */
+  border-left: none !important;
+}
+
+.rbc-time-content > div > div:has(> .rbc-day-slot[data-resource-id="external"]) {
+  flex: 1 !important;
+  /* RBC's `.rbc-time-content > * + * > *` rule (react-big-calendar.css) draws
+     the vertical day-boundary line by giving every child of a non-first
+     `.rbc-time-content` day-wrapper a `border-left`. Before resource view,
+     each day-wrapper had one child (the day-slot), so that line landed only
+     at day boundaries. Now each day-wrapper has two children — the entries
+     and external lane wrappers — so the rule also draws an unwanted line
+     between the two lanes. Only the entries-lane wrapper should keep the
+     day-boundary border; strip it from the external-lane wrapper. */
+  border-left: none !important;
 }
 
 /* Today column highlight */

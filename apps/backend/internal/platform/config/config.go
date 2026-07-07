@@ -12,6 +12,7 @@ type StartupConfig struct {
 	Governance  GovernanceConfig
 	Telemetry   TelemetryConfig
 	Webhook     WebhookConfig
+	Calendar    CalendarConfig
 }
 
 type ServerConfig struct {
@@ -53,4 +54,13 @@ type TelemetryConfig struct {
 // set OPENTOGGL_WEBHOOK_ALLOW_PRIVATE_TARGETS=true to opt back in.
 type WebhookConfig struct {
 	AllowPrivateTargets bool
+}
+
+// CalendarConfig holds the Google OAuth client credentials for the external
+// calendar integration. Both fields are optional: unset means the feature is
+// unavailable (the "Connect" flow reports it isn't configured) rather than
+// falling back to any default client.
+type CalendarConfig struct {
+	GoogleClientID     string
+	GoogleClientSecret string
 }
