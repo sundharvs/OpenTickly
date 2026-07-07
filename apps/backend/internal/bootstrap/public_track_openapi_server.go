@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	billingpublicapi "opentoggl/backend/apps/backend/internal/billing/transport/http/public-api"
+	calendarpublicapi "opentoggl/backend/apps/backend/internal/calendar/transport/http/public-api"
 	catalogpublicapi "opentoggl/backend/apps/backend/internal/catalog/transport/http/public-api"
 	governancepublicapi "opentoggl/backend/apps/backend/internal/governance/transport/http/public-api"
 	publictrackapi "opentoggl/backend/apps/backend/internal/http/generated/publictrack"
@@ -26,12 +27,14 @@ type publicTrackOpenAPIServer struct {
 	reference  *referencepublicapi.Handler
 	billing    *billingpublicapi.Handler
 	reports    *reportspublicapi.Handler
+	calendar   *calendarpublicapi.Handler
 }
 
 func newPublicTrackOpenAPIServer(handlers *routeHandlers) publictrackapi.ServerInterface {
 	return &publicTrackOpenAPIServer{
 		publicTrackUnimplementedServer: &publicTrackUnimplementedServer{},
 		identity:                       identitypublicapi.NewPublicTrackHandler(handlers.identityAPI, handlers.referenceApp, handlers.fileStore),
+		calendar:                       calendarpublicapi.NewHandler(handlers.calendarApp, handlers, handlers.calendarCallbackURL),
 		tenant: tenantpublicapi.NewHandler(
 			handlers.tenantApp,
 			handlers.billingApp,

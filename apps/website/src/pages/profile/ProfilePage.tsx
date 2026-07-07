@@ -19,6 +19,7 @@ import {
 import { useUserPreferences } from "../../shared/query/useUserPreferences.ts";
 import { useSession } from "../../shared/session/session-context.tsx";
 import { defaultPreferencesFormValues } from "./ProfilePageData.ts";
+import { ExternalCalendarsSection } from "./ProfilePageCalendarSection.tsx";
 import { ProfileHeroCard } from "./ProfilePagePrimitives.tsx";
 import {
   ApiTokenSection,
@@ -210,6 +211,10 @@ export function ProfilePage(): ReactElement {
           />
 
           <TimerPageSection getValue={readPreference} setValue={writePreference} />
+          <ExternalCalendarsSection
+            returnToPath="/profile#external-calendars"
+            siteUrl={session.siteUrl}
+          />
           <TimeAndDateSection getValue={readPreference} setValue={writePreference} />
           <KeyboardShortcutsSection getValue={readPreference} setValue={writePreference} />
 

@@ -89,5 +89,17 @@
   "wednesday": "Wednesday",
   "thursday": "Thursday",
   "friday": "Friday",
-  "saturday": "Saturday"
+  "saturday": "Saturday",
+  "externalCalendars": "External calendars",
+  "externalCalendarsDescription": "Connect a calendar to see your events and easily create time entries. Connected calendar events are private — only you can see them.",
+  "googleCalendar": "Google Calendar",
+  "connect": "Connect",
+  "connecting": "Connecting…",
+  "remove": "Remove",
+  "removing": "Removing…",
+  "calendarNotConfigured": "Ask your instance admin to configure OPENTOGGL_GOOGLE_CALENDAR_CLIENT_ID / SECRET to enable this.",
+  "showUnselectedCalendars": "Show unselected calendars",
+  "hideUnselectedCalendars": "Hide unselected calendars",
+  "noCalendarsFound": "No calendars found for this account.",
+  "calendarConnectError": "Could not connect the calendar. Try again."
 }

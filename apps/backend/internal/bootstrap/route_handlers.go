@@ -11,6 +11,9 @@ import (
 	billingapplication "opentoggl/backend/apps/backend/internal/billing/application"
 	billingdomain "opentoggl/backend/apps/backend/internal/billing/domain"
 	billingpostgres "opentoggl/backend/apps/backend/internal/billing/infra/postgres"
+	calendarapplication "opentoggl/backend/apps/backend/internal/calendar/application"
+	calendargoogle "opentoggl/backend/apps/backend/internal/calendar/infra/google"
+	calendarpostgres "opentoggl/backend/apps/backend/internal/calendar/infra/postgres"
 	catalogapplication "opentoggl/backend/apps/backend/internal/catalog/application"
 	catalogpostgres "opentoggl/backend/apps/backend/internal/catalog/infra/postgres"
 	filespostgres "opentoggl/backend/apps/backend/internal/files/infra/postgres"
@@ -76,6 +79,7 @@ type routeHandlers struct {
 	samlManager     *identitysaml.Manager
 	samlConfig      *samlConfigStore
 	siteURL         *siteURLReaderFromDB
+	calendarApp     *calendarapplication.Service
 }
 
 func newRouteHandlers(pool *pgxpool.Pool, platformHandles *platform.Handles, appLogger log.Logger, telemetryPinger *telemetryapplication.Pinger) (*routeHandlers, error) {
@@ -209,6 +213,21 @@ func newRouteHandlers(pool *pgxpool.Pool, platformHandles *platform.Handles, app
 	)
 	identityHandler := identityweb.NewHandlerWithShell(identityService, shellProvider, siteURLReader)
 
+	calendarProvider := calendargoogle.NewProvider(
+		calendargoogle.OAuthConfig{
+			ClientID:     platformHandles.Calendar.GoogleClientID,
+			ClientSecret: platformHandles.Calendar.GoogleClientSecret,
+		},
+		calendargoogle.Client{},
+	)
+	calendarService := calendarapplication.NewService(
+		calendarpostgres.NewRepository(pool),
+		cache,
+		map[string]calendarapplication.Provider{
+			"google": calendarProvider,
+		},
+	)
+
 	return &routeHandlers{
 		pool:            pool,
 		platformHandles: platformHandles,
@@ -233,6 +252,7 @@ func newRouteHandlers(pool *pgxpool.Pool, platformHandles *platform.Handles, app
 		samlManager:     identitysaml.NewManager(),
 		samlConfig:      &samlConfigStore{pool: pool},
 		siteURL:         siteURLReader,
+		calendarApp:     calendarService,
 	}, nil
 }
 

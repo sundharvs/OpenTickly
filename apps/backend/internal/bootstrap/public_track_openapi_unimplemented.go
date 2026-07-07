@@ -64,10 +64,18 @@ func (server *publicTrackUnimplementedServer) GetIcal(ctx echo.Context, token st
 	return echo.NewHTTPError(http.StatusNotImplemented, "Not Implemented")
 }
 
-// Calendar integration endpoints are intentionally unimplemented.
-// These require third-party OAuth connections (Google Calendar, Outlook)
-// which are not supported in self-hosted OpenTickly deployments.
-// Upstream Toggl Track provides these as a SaaS-only feature.
+// GetIntegrationsCalendar, GetIntegrationsCalendarSetup,
+// DeleteIntegrationsCalendarIntegrationId,
+// GetIntegrationsCalendarIntegrationIdCalendars,
+// PatchIntegrationsCalendarIntegrationIdCalendarsCalendarId, and
+// GetIntegrationsCalendarEvents are implemented for real on
+// publicTrackOpenAPIServer (see public_track_calendar_router.go and
+// internal/calendar), which shadows the stubs below — same pattern as GetMe
+// further down this file. Google Calendar is supported (self-hosted or not);
+// Outlook and the endpoints below remain unimplemented for this pass:
+// calendars/selected, events/update, both details-suggestion routes,
+// attendees, the deprecated per-calendar events route, PUT integration, and
+// calendars/update (see internal/calendar/doc.go).
 
 func (server *publicTrackUnimplementedServer) GetIntegrationsCalendar(ctx echo.Context) error {
 	return echo.NewHTTPError(http.StatusNotImplemented, "Not Implemented")

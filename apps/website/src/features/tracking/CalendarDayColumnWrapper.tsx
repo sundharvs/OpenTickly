@@ -14,8 +14,12 @@ export const CalendarDayColumnWrapper = React.forwardRef<
     style?: React.CSSProperties;
     isNow?: boolean;
     onStartEntry?: () => void;
+    resourceId?: string;
   }
->(function CalendarDayColumnWrapper({ children, className, style, isNow, onStartEntry }, ref) {
+>(function CalendarDayColumnWrapper(
+  { children, className, style, isNow, onStartEntry, resourceId },
+  ref,
+) {
   const columnRef = useRef<HTMLDivElement>(null);
   const playRef = useRef<SVGSVGElement>(null);
 
@@ -59,7 +63,7 @@ export const CalendarDayColumnWrapper = React.forwardRef<
   }, [children, className, isNow, style, syncPosition]);
 
   return (
-    <div className={className} ref={setRef} style={style}>
+    <div className={className} data-resource-id={resourceId} ref={setRef} style={style}>
       {children}
       {isNow ? (
         <svg
