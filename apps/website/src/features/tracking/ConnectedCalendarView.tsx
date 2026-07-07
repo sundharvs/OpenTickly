@@ -128,8 +128,6 @@ export function ConnectedCalendarView({
   const handleCalendarSlotCreate = (slot: { end: Date; start: Date }) => {
     const store = useTimerViewStore.getState();
     if (store.selectedEntry != null || wasEditorOpenAtPointerDownRef.current) {
-      store.closeEditor();
-      store.setCalendarDraftEntry(null);
       return;
     }
 
