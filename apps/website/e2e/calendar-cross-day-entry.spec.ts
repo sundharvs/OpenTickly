@@ -164,13 +164,26 @@ test.describe("Calendar: cross-day (overnight) time entries", () => {
         () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
       );
 
+      // Column index is taken among the time-entry lane's day-slots specifically
+      // (not raw DOM siblings): the calendar also renders a narrower external-
+      // calendar-event lane per day (see CalendarView.tsx's `resources` prop),
+      // which nests each `.rbc-day-slot` one level deeper than a plain 7-column
+      // grid would.
       const firstCol = await timeGridEntries.first().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
-        return slot?.parentElement ? Array.from(slot.parentElement.children).indexOf(slot) : -1;
+        return slot
+          ? Array.from(
+              document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
+            ).indexOf(slot)
+          : -1;
       });
       const secondCol = await timeGridEntries.last().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
-        return slot?.parentElement ? Array.from(slot.parentElement.children).indexOf(slot) : -1;
+        return slot
+          ? Array.from(
+              document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
+            ).indexOf(slot)
+          : -1;
       });
 
       expect(firstCol).not.toBe(-1);
@@ -187,9 +200,11 @@ test.describe("Calendar: cross-day (overnight) time entries", () => {
       );
       const colInfo = await timeGridEntries.first().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
-        if (!slot?.parentElement) return { index: -1, total: 0 };
-        const siblings = Array.from(slot.parentElement.children);
-        return { index: siblings.indexOf(slot), total: siblings.length };
+        if (!slot) return { index: -1, total: 0 };
+        const entryLaneSlots = Array.from(
+          document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
+        );
+        return { index: entryLaneSlots.indexOf(slot), total: entryLaneSlots.length };
       });
       // Should be the last day-slot column (regardless of gutter columns)
       expect(colInfo.index).toBe(colInfo.total - 1);

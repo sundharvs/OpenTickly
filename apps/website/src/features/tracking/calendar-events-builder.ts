@@ -1,7 +1,8 @@
 import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared/api/generated/public-track/types.gen.ts";
 import { resolveEntryColor, sumForDate } from "./overview-data.ts";
-import type { CalendarEvent } from "./calendar-types.ts";
+import type { CalendarEvent, ExternalCalendarEvent } from "./calendar-types.ts";
 import { isRunningTimeEntry, splitAtMidnight } from "./calendar-types.ts";
+import type { ExternalCalendarEventInput } from "./external-calendar-mock-data.ts";
 
 /**
  * react-big-calendar's dragAndDrop addon classifies any event whose start
@@ -45,6 +46,7 @@ export function buildEvents(
         isDraft: false,
         isLocked: false,
         isRunning: false,
+        kind: "entry" as const,
       };
       const title = entry.description?.trim() || entry.project_name || "Entry";
       return splitAtMidnight(start, end).map((segment) => ({
@@ -53,6 +55,7 @@ export function buildEvents(
         entry,
         id: entry.id,
         resource,
+        resourceId: "entries" as const,
         start: segment.start,
         title,
       }));
@@ -75,7 +78,9 @@ export function buildEvents(
         isDraft: true,
         isLocked: false,
         isRunning: false,
+        kind: "entry" as const,
       },
+      resourceId: "entries" as const,
       start,
       title: draftWithId.description?.trim() || draftWithId.project_name || "Entry",
     });
@@ -112,6 +117,7 @@ export function buildEvents(
         isDraft: false,
         isLocked: false,
         isRunning: true,
+        kind: "entry" as const,
       };
       const title = entry.description?.trim() || entry.project_name || "Entry";
       return splitAtMidnight(start, end).map((segment) => ({
@@ -120,12 +126,29 @@ export function buildEvents(
         entry,
         id: entry.id,
         resource,
+        resourceId: "entries" as const,
         start: segment.start,
         title,
       }));
     });
 
   return [...stoppedEvents, ...runningEvents];
+}
+
+export function buildExternalEvents(
+  externalEvents: ExternalCalendarEventInput[],
+): ExternalCalendarEvent[] {
+  return externalEvents.flatMap((event) =>
+    splitAtMidnight(event.start, event.end).map((segment) => ({
+      allDay: false as const,
+      end: segment.end,
+      id: `${event.id}-${segment.start.toISOString()}`,
+      resource: { kind: "external" as const },
+      resourceId: "external" as const,
+      start: segment.start,
+      title: event.title,
+    })),
+  );
 }
 
 export function buildDailyTotals(

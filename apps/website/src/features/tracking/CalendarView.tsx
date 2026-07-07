@@ -7,14 +7,22 @@ import "./calendar.css";
 import { calendarDayLayout } from "./calendar-day-layout.ts";
 import { CalendarEntryContextMenu } from "./CalendarEntryContextMenu.tsx";
 import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared/api/generated/public-track/types.gen.ts";
-import type { CalendarEvent, CalendarViewProps } from "./calendar-types.ts";
+import type {
+  CalendarGridEvent,
+  CalendarViewProps,
+  ExternalCalendarEvent,
+} from "./calendar-types.ts";
 import { buildCalendarLocalizer, formatDateIso } from "./calendar-types.ts";
 export type { CalendarContextMenuAction } from "./calendar-types.ts";
 import { CalendarDayColumnWrapper } from "./CalendarDayColumnWrapper.tsx";
 import { CalendarDayHeader } from "./CalendarDayHeader.tsx";
 import { CalendarEventCard } from "./CalendarEventCard.tsx";
-import { buildDailyTotals, buildEvents } from "./calendar-events-builder.ts";
+import { ExternalCalendarEventCard } from "./ExternalCalendarEventCard.tsx";
+import { ExternalCalendarEventPopover } from "./ExternalCalendarEventPopover.tsx";
+import { buildDailyTotals, buildEvents, buildExternalEvents } from "./calendar-events-builder.ts";
 import { formatClockTime } from "./overview-data.ts";
+
+const CALENDAR_RESOURCES = [{ id: "entries" }, { id: "external" }];
 
 const withDragAndDrop =
   typeof withDragAndDropModule === "function"
@@ -29,21 +37,24 @@ if (!withDragAndDrop) {
   throw new Error("react-big-calendar drag-and-drop addon failed to load");
 }
 
-const DnDCalendar = withDragAndDrop<CalendarEvent>(Calendar);
+const DnDCalendar = withDragAndDrop<CalendarGridEvent>(Calendar);
 
 export function CalendarView({
   calendarHours = "all",
   draftEntry,
   entries,
+  externalEvents = [],
   isEntryFavorited,
   onContextMenuAction,
   onContinueEntry,
+  onCopyExternalEventAsEntry,
   onMoveEntry,
   onEditEntry,
   onResizeEntry,
   onSelectSlot,
   onSelectSubviewDate,
   onStartEntry,
+  onStartEntryFromExternal,
   runningEntry,
   selectedSubviewDateIso,
   subview = "week",
@@ -90,7 +101,10 @@ export function CalendarView({
     return weekDays[0] ?? now;
   })();
 
-  const events = buildEvents(entries, draftEntry, runningEntry, nowMinuteMs);
+  const events: CalendarGridEvent[] = [
+    ...buildEvents(entries, draftEntry, runningEntry, nowMinuteMs),
+    ...buildExternalEvents(externalEvents),
+  ];
   const dailyTotals = buildDailyTotals(entries, weekDays, timezone);
   const today = new Date(todayDayStartMs);
 
@@ -203,6 +217,12 @@ export function CalendarView({
     y: number;
   } | null>(null);
 
+  const [externalPopoverState, setExternalPopoverState] = useState<{
+    event: ExternalCalendarEvent;
+    x: number;
+    y: number;
+  } | null>(null);
+
   // Stable handler so every call to `components.event(props)` below passes
   // the same onContextMenu reference. Inline-constructing this arrow made
   // CalendarEventCard's prop identity change on every RBC-internal render
@@ -217,28 +237,34 @@ export function CalendarView({
   };
 
   const calendarComponents = {
-    event: (props: EventProps<CalendarEvent>) => (
-      <CalendarEventCard
-        event={props.event}
-        onContextMenu={handleEventContextMenu}
-        onContinueEntry={onContinueEntry}
-        onEditEntry={onEditEntry}
-      />
-    ),
+    event: (props: EventProps<CalendarGridEvent>) =>
+      props.event.resourceId === "external" ? (
+        <ExternalCalendarEventCard event={props.event} />
+      ) : (
+        <CalendarEventCard
+          event={props.event}
+          onContextMenu={handleEventContextMenu}
+          onContinueEntry={onContinueEntry}
+          onEditEntry={onEditEntry}
+        />
+      ),
     header: ({ date }: { date: Date }) => (
       <CalendarDayHeader date={date} dailyTotals={dailyTotals} timezone={timezone} today={today} />
     ),
     dayColumnWrapper: React.forwardRef<HTMLDivElement, Record<string, unknown>>(
       function DayColumnWrapperBridge(props, ref) {
+        const resourceId = props.resource as string | undefined;
         return (
           <CalendarDayColumnWrapper
             ref={ref}
             className={props.className as string | undefined}
             isNow={Boolean(
+              resourceId !== "external" &&
               typeof props.className === "string" &&
               (props.className as string).includes("rbc-now"),
             )}
             onStartEntry={onStartEntry}
+            resourceId={resourceId}
             style={props.style as React.CSSProperties | undefined}
           >
             {props.children as React.ReactNode}
@@ -266,21 +292,32 @@ export function CalendarView({
         defaultView={Views.WEEK}
         getNow={() => new Date()}
         draggableAccessor={(event) =>
-          !event.resource.isLocked && !event.resource.isRunning && !event.resource.isDraft
+          event.resourceId === "entries" &&
+          !event.resource.isLocked &&
+          !event.resource.isRunning &&
+          !event.resource.isDraft
         }
         endAccessor={(event) => event.end}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         dayLayoutAlgorithm={calendarDayLayout as any}
-        eventPropGetter={(event) => ({
-          className: event.resource.isRunning ? "rbc-event-running" : undefined,
-          style: {
-            backgroundColor: "transparent",
-            border: event.resource.isDraft ? "1px dashed var(--track-accent-outline)" : "none",
-            color: "var(--track-text)",
-            opacity: event.resource.isDraft ? 0.7 : undefined,
-          },
-        })}
+        eventPropGetter={(event) =>
+          event.resourceId === "external"
+            ? {}
+            : {
+                className: event.resource.isRunning ? "rbc-event-running" : undefined,
+                style: {
+                  backgroundColor: "transparent",
+                  border: event.resource.isDraft
+                    ? "1px dashed var(--track-accent-outline)"
+                    : "none",
+                  color: "var(--track-text)",
+                  opacity: event.resource.isDraft ? 0.7 : undefined,
+                },
+              }
+        }
         events={events}
+        resources={CALENDAR_RESOURCES}
+        resourceGroupingLayout
         formats={{
           timeGutterFormat: (date: Date) => formatClockTime(date, timezone, timeFormat),
         }}
@@ -295,7 +332,8 @@ export function CalendarView({
         }}
         min={minTime}
         onDrillDown={(date) => onSelectSubviewDate?.(formatDateIso(date))}
-        onEventDrop={({ event, start, end }: EventInteractionArgs<CalendarEvent>) => {
+        onEventDrop={({ event, start, end }: EventInteractionArgs<CalendarGridEvent>) => {
+          if (event.resourceId !== "entries") return;
           const nextStart = new Date(start);
           const nextEnd = new Date(end);
           const minutesDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
@@ -314,7 +352,8 @@ export function CalendarView({
             end: nextEnd.toISOString(),
           };
         }}
-        onEventResize={({ end, event, start }: EventInteractionArgs<CalendarEvent>) => {
+        onEventResize={({ end, event, start }: EventInteractionArgs<CalendarGridEvent>) => {
+          if (event.resourceId !== "entries") return;
           const nextStart = new Date(start);
           const nextEnd = new Date(end);
           const startDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
@@ -328,18 +367,26 @@ export function CalendarView({
         onNavigate={() => undefined}
         onSelectEvent={(event, nativeEvent) => {
           const target = nativeEvent.currentTarget;
-          if (target instanceof HTMLElement) {
-            onEditEntry?.(event.entry, target.getBoundingClientRect());
+          if (!(target instanceof HTMLElement)) return;
+          if (event.resourceId === "external") {
+            const rect = target.getBoundingClientRect();
+            setExternalPopoverState({ event, x: rect.right + 8, y: rect.top });
+            return;
           }
+          onEditEntry?.(event.entry, target.getBoundingClientRect());
         }}
         onSelectSlot={(slotInfo: SlotInfo) => {
+          if (slotInfo.resourceId != null && slotInfo.resourceId !== "entries") return;
           if (slotInfo.start && slotInfo.end) {
             onSelectSlot?.({ end: slotInfo.end, start: slotInfo.start });
           }
         }}
         resizable
         resizableAccessor={(event) =>
-          !event.resource.isLocked && !event.resource.isRunning && !event.resource.isDraft
+          event.resourceId === "entries" &&
+          !event.resource.isLocked &&
+          !event.resource.isRunning &&
+          !event.resource.isDraft
         }
         scrollToTime={scrollToTime}
         selectable
@@ -393,6 +440,23 @@ export function CalendarView({
               ? `/projects/${contextMenuState.entry.workspace_id ?? contextMenuState.entry.wid}/list`
               : undefined
           }
+        />
+      ) : null}
+      {externalPopoverState ? (
+        <ExternalCalendarEventPopover
+          event={externalPopoverState.event}
+          onClose={() => setExternalPopoverState(null)}
+          onCopyAsTimeEntry={() => {
+            onCopyExternalEventAsEntry?.(externalPopoverState.event);
+            setExternalPopoverState(null);
+          }}
+          onStart={() => {
+            onStartEntryFromExternal?.(externalPopoverState.event);
+            setExternalPopoverState(null);
+          }}
+          position={{ x: externalPopoverState.x, y: externalPopoverState.y }}
+          timeFormat={timeFormat}
+          timezone={timezone}
         />
       ) : null}
     </div>

@@ -2,6 +2,7 @@ import { dateFnsLocalizer } from "react-big-calendar";
 import { mix } from "polished";
 
 import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared/api/generated/public-track/types.gen.ts";
+import type { ExternalCalendarEventInput } from "./external-calendar-mock-data.ts";
 import type { TimeFormat } from "./overview-data.ts";
 import type { CalendarSubview } from "./timer-view-mode.ts";
 import { format } from "date-fns/format";
@@ -20,10 +21,26 @@ export type CalendarEvent = {
     isDraft: boolean;
     isLocked: boolean;
     isRunning: boolean;
+    kind: "entry";
   };
+  resourceId: "entries";
   start: Date;
   title: string;
 };
+
+export type ExternalCalendarEvent = {
+  allDay: false;
+  end: Date;
+  id: string;
+  resource: {
+    kind: "external";
+  };
+  resourceId: "external";
+  start: Date;
+  title: string;
+};
+
+export type CalendarGridEvent = CalendarEvent | ExternalCalendarEvent;
 
 export type CalendarContextMenuAction =
   | "copy-description"
@@ -38,18 +55,21 @@ export type CalendarViewProps = {
   calendarHours?: "all" | "business";
   draftEntry?: GithubComTogglTogglApiInternalModelsTimeEntry | null;
   entries: GithubComTogglTogglApiInternalModelsTimeEntry[];
+  externalEvents?: ExternalCalendarEventInput[];
   isEntryFavorited?: (entry: GithubComTogglTogglApiInternalModelsTimeEntry) => boolean;
   onContextMenuAction?: (
     entry: GithubComTogglTogglApiInternalModelsTimeEntry,
     action: CalendarContextMenuAction,
   ) => void;
   onContinueEntry?: (entry: GithubComTogglTogglApiInternalModelsTimeEntry) => void;
+  onCopyExternalEventAsEntry?: (event: ExternalCalendarEvent) => void;
   onMoveEntry?: (entryId: number, minutesDelta: number) => void;
   onEditEntry?: (entry: GithubComTogglTogglApiInternalModelsTimeEntry, anchorRect: DOMRect) => void;
   onResizeEntry?: (entryId: number, edge: "start" | "end", minutesDelta: number) => void;
   onSelectSlot?: (slot: { end: Date; start: Date }) => void;
   onSelectSubviewDate?: (dateIso: string) => void;
   onStartEntry?: () => void;
+  onStartEntryFromExternal?: (event: ExternalCalendarEvent) => void;
   runningEntry?: GithubComTogglTogglApiInternalModelsTimeEntry | null;
   selectedSubviewDateIso?: string;
   subview?: CalendarSubview;
