@@ -69,7 +69,7 @@ export function ExternalCalendarEventPopover({
         </button>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="truncate text-[14px] font-semibold text-[var(--track-text)]">
+        <span className="min-w-0 break-words text-[14px] font-semibold text-[var(--track-text)]">
           {event.title}
         </span>
         <span className="flex shrink-0 items-center gap-1 text-[12px] text-[var(--track-text-muted)]">

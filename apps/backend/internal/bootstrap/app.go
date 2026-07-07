@@ -193,5 +193,6 @@ func newHTTPRouteRegistrar(platform *platform.Handles, pinger *telemetry.Pinger)
 		newFileRoutes(assembledHandlers),
 		newSAML2Routes(assembledHandlers),
 		newWebSSODiagnosticsRoutes(assembledHandlers),
+		newCalendarRoutes(assembledHandlers),
 	), assembledHandlers.governanceApp, nil
 }

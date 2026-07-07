@@ -14,7 +14,7 @@ function ExternalCalendarEventCardImpl({ event }: { event: ExternalCalendarEvent
       data-testid={`calendar-external-event-${event.id}`}
       style={{ backgroundColor: "var(--track-external-event-bg)" }}
     >
-      <span className="truncate font-semibold leading-tight">{event.title}</span>
+      <span className="break-words font-semibold leading-tight">{event.title}</span>
     </div>
   );
 }

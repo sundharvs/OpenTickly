@@ -2,7 +2,7 @@ import { dateFnsLocalizer } from "react-big-calendar";
 import { mix } from "polished";
 
 import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared/api/generated/public-track/types.gen.ts";
-import type { ExternalCalendarEventInput } from "./external-calendar-mock-data.ts";
+import type { ExternalCalendarEventInput } from "./external-calendar-types.ts";
 import type { TimeFormat } from "./overview-data.ts";
 import type { CalendarSubview } from "./timer-view-mode.ts";
 import { format } from "date-fns/format";

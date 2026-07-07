@@ -38,6 +38,8 @@ func ConfigFromEnvironment(getEnv func(string) string) (Config, error) {
 	applyIntOverride(&cfg.Governance.AuditLogRetentionDays, getEnv("OPENTOGGL_AUDIT_LOG_RETENTION_DAYS"))
 	applyBoolOverride(&cfg.Telemetry.Enabled, getEnv("OPENTOGGL_TELEMETRY"))
 	applyBoolOverride(&cfg.Webhook.AllowPrivateTargets, getEnv("OPENTOGGL_WEBHOOK_ALLOW_PRIVATE_TARGETS"))
+	applyStringOverride(&cfg.Calendar.GoogleClientID, getEnv("OPENTOGGL_GOOGLE_CALENDAR_CLIENT_ID"))
+	applyStringOverride(&cfg.Calendar.GoogleClientSecret, getEnv("OPENTOGGL_GOOGLE_CALENDAR_CLIENT_SECRET"))
 
 	return withDefaults(cfg), nil
 }

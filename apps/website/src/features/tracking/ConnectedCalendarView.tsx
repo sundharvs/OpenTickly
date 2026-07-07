@@ -6,6 +6,7 @@ import {
   useCreateWorkspaceFavoriteMutation,
   useCurrentTimeEntryQuery,
   useDeleteTimeEntryMutation,
+  useExternalCalendarEventsQuery,
   useStartTimeEntryMutation,
   useStopTimeEntryMutation,
   useUpdateTimeEntryMutation,
@@ -14,7 +15,6 @@ import { copyToClipboard } from "../../shared/lib/clipboard.ts";
 import { resolveTimeEntryProjectId, toTrackIso } from "./time-entry-ids.ts";
 import type { ExternalCalendarEvent } from "./calendar-types.ts";
 import { CalendarView, type CalendarContextMenuAction } from "./CalendarView.tsx";
-import { buildMockExternalCalendarEvents } from "./external-calendar-mock-data.ts";
 import { SurfaceMessage } from "./overview-views.tsx";
 import { useUserPreferences } from "../../shared/query/useUserPreferences.ts";
 import { useTimerViewStore } from "./store/timer-view-store.ts";
@@ -56,6 +56,11 @@ export function ConnectedCalendarView({
 
   const calendarSubview = useTimerViewStore((s) => s.calendarSubview);
   const calendarDraftEntry = useTimerViewStore((s) => s.calendarDraftEntry);
+
+  const externalEventsQuery = useExternalCalendarEventsQuery(
+    formatTrackQueryDate(weekDays[0]),
+    formatTrackQueryDate(weekDays[weekDays.length - 1]),
+  );
 
   const selectedSubviewDateIso =
     calendarSubview === "day" ? formatTrackQueryDate(selectedWeekDate) : undefined;
@@ -312,7 +317,7 @@ export function ConnectedCalendarView({
       calendarHours={calendarHours}
       draftEntry={calendarDraftEntry}
       entries={views.visibleEntries}
-      externalEvents={buildMockExternalCalendarEvents(weekDays)}
+      externalEvents={externalEventsQuery.data ?? []}
       onContinueEntry={onContinueEntry}
       onContextMenuAction={onContextMenu}
       onCopyExternalEventAsEntry={onCopyExternalEventAsEntry}

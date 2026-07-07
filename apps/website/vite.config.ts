@@ -172,6 +172,12 @@ export default defineConfig(() => {
         "/files": {
           target: webProxyTarget,
         },
+        // Google's OAuth redirect lands the browser here directly (not via
+        // fetch), so this pre-session route — outside the /api/v9 OpenAPI
+        // surface, like /auth/sso/resolve — needs its own proxy entry.
+        "/integrations": {
+          target: webProxyTarget,
+        },
       },
     },
     test: {

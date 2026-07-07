@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildExternalEvents } from "./calendar-events-builder.ts";
-import type { ExternalCalendarEventInput } from "./external-calendar-mock-data.ts";
+import type { ExternalCalendarEventInput } from "./external-calendar-types.ts";
 
 describe("buildExternalEvents", () => {
   it("maps external calendar inputs onto the external resource lane", () => {

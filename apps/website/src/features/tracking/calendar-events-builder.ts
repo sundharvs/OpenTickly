@@ -2,7 +2,7 @@ import type { GithubComTogglTogglApiInternalModelsTimeEntry } from "../../shared
 import { resolveEntryColor, sumForDate } from "./overview-data.ts";
 import type { CalendarEvent, ExternalCalendarEvent } from "./calendar-types.ts";
 import { isRunningTimeEntry, splitAtMidnight } from "./calendar-types.ts";
-import type { ExternalCalendarEventInput } from "./external-calendar-mock-data.ts";
+import type { ExternalCalendarEventInput } from "./external-calendar-types.ts";
 
 /**
  * react-big-calendar's dragAndDrop addon classifies any event whose start
