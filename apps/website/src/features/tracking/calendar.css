@@ -18,6 +18,20 @@
   border: none;
 }
 
+/* Slot-selection drags (drag-to-create) fire a native `mousedown` that
+   browsers also interpret as the start of a text-selection drag. RBC's own
+   Selection helper suppresses this per-column, but with the external-
+   calendar resource lane enabled there are two independently-selectable
+   `.rbc-day-slot` columns per day, and a drag that starts on top of an
+   external event (non-draggable, so RBC's DnD addon doesn't claim it either)
+   can fall through without either side calling preventDefault — leaving the
+   browser's native drag-select to grab whatever text is nearby. Disabling
+   selection on the whole time-grid removes that class of bug outright. */
+.rbc-time-content,
+.rbc-time-header-content {
+  user-select: none;
+}
+
 /* ── Header row (day columns) ── */
 /* Sticky below the timer bar so day names stay visible during window scroll.
    Toggl dark: background var(--track-surface), border-bottom matches var(--track-border).

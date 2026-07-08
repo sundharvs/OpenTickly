@@ -45,26 +45,27 @@ test("dragging to create a calendar entry works on the second attempt, not just 
   const calendarBox = await page.getByTestId("timer-calendar-view").boundingBox();
   if (!calendarBox) throw new Error("calendar view has no bounding box");
 
+  // The calendar view spans a full 24h day grid (well over a viewport's
+  // worth of pixels) and auto-scrolls the window to center "now" on
+  // mount, so `calendarBox.y` is frequently negative — most of the grid
+  // sits above or below the viewport at any given scroll position.
+  // Compute drag targets from the visible viewport height, not the full
+  // (mostly off-screen) element height, otherwise these coordinates land
+  // outside the viewport depending on what time of day the test runs.
+  const viewportHeight = page.viewportSize()?.height ?? 720;
+
   const dialog = page.getByTestId("time-entry-editor-dialog");
   const closeButton = page.getByRole("button", { name: "Close editor" });
 
   const firstX = calendarBox.x + calendarBox.width * 0.4;
-  const firstTop = calendarBox.y + calendarBox.height * 0.3;
-  await dragByOffset(
-    page,
-    { x: firstX, y: firstTop },
-    { x: firstX, y: firstTop + 80 },
-  );
+  const firstTop = viewportHeight * 0.3;
+  await dragByOffset(page, { x: firstX, y: firstTop }, { x: firstX, y: firstTop + 80 });
   await expect(dialog).toBeVisible();
   await closeButton.click();
   await expect(dialog).not.toBeVisible();
 
   const secondX = calendarBox.x + calendarBox.width * 0.7;
-  const secondTop = calendarBox.y + calendarBox.height * 0.5;
-  await dragByOffset(
-    page,
-    { x: secondX, y: secondTop },
-    { x: secondX, y: secondTop + 80 },
-  );
+  const secondTop = viewportHeight * 0.5;
+  await dragByOffset(page, { x: secondX, y: secondTop }, { x: secondX, y: secondTop + 80 });
   await expect(dialog).toBeVisible();
 });

@@ -41,17 +41,29 @@ const DnDCalendar = withDragAndDrop<CalendarGridEvent>(Calendar);
 
 const CalendarOnStartEntryContext = React.createContext<(() => void) | undefined>(undefined);
 
+// Defined at module scope (not inline inside CalendarView's render) so RBC
+// sees the SAME component reference across re-renders. `components.dayColumnWrapper`
+// identity changing forces RBC to unmount+remount every day column's DOM,
+// which resets its internal Selection manager mid-interaction (drag-to-create
+// silently stops firing onSelectSlot after the first drag). onStartEntry is
+// threaded through context instead of a render-scope closure so this stays
+// stable; resourceId comes from RBC's own `props.resource`, which needs no
+// closure at all. See e2e/calendar-drag-select-twice.spec.ts.
 const DayColumnWrapperBridge = React.forwardRef<HTMLDivElement, Record<string, unknown>>(
   function DayColumnWrapperBridge(props, ref) {
     const onStartEntry = useContext(CalendarOnStartEntryContext);
+    const resourceId = props.resource as string | undefined;
     return (
       <CalendarDayColumnWrapper
         ref={ref}
         className={props.className as string | undefined}
         isNow={Boolean(
-          typeof props.className === "string" && (props.className as string).includes("rbc-now"),
+          resourceId !== "external" &&
+          typeof props.className === "string" &&
+          (props.className as string).includes("rbc-now"),
         )}
         onStartEntry={onStartEntry}
+        resourceId={resourceId}
         style={props.style as React.CSSProperties | undefined}
       >
         {props.children as React.ReactNode}
@@ -122,9 +134,11 @@ export function CalendarView({
     return weekDays[0] ?? now;
   })();
 
+  const externalGridEvents = buildExternalEvents(externalEvents);
+  const hasExternalEvents = externalGridEvents.length > 0;
   const events: CalendarGridEvent[] = [
     ...buildEvents(entries, draftEntry, runningEntry, nowMinuteMs),
-    ...buildExternalEvents(externalEvents),
+    ...externalGridEvents,
   ];
   const dailyTotals = buildDailyTotals(entries, weekDays, timezone);
   const today = new Date(todayDayStartMs);
@@ -272,27 +286,7 @@ export function CalendarView({
     header: ({ date }: { date: Date }) => (
       <CalendarDayHeader date={date} dailyTotals={dailyTotals} timezone={timezone} today={today} />
     ),
-    dayColumnWrapper: React.forwardRef<HTMLDivElement, Record<string, unknown>>(
-      function DayColumnWrapperBridge(props, ref) {
-        const resourceId = props.resource as string | undefined;
-        return (
-          <CalendarDayColumnWrapper
-            ref={ref}
-            className={props.className as string | undefined}
-            isNow={Boolean(
-              resourceId !== "external" &&
-              typeof props.className === "string" &&
-              (props.className as string).includes("rbc-now"),
-            )}
-            onStartEntry={onStartEntry}
-            resourceId={resourceId}
-            style={props.style as React.CSSProperties | undefined}
-          >
-            {props.children as React.ReactNode}
-          </CalendarDayColumnWrapper>
-        );
-      },
-    ),
+    dayColumnWrapper: DayColumnWrapperBridge,
   };
 
   return (
@@ -308,118 +302,121 @@ export function CalendarView({
       ref={wrapperRef}
     >
       <CalendarOnStartEntryContext.Provider value={onStartEntry}>
-      <DnDCalendar
-        components={calendarComponents}
-        date={calendarDate}
-        defaultView={Views.WEEK}
-        getNow={() => new Date()}
-        draggableAccessor={(event) =>
-          event.resourceId === "entries" &&
-          !event.resource.isLocked &&
-          !event.resource.isRunning &&
-          !event.resource.isDraft
-        }
-        endAccessor={(event) => event.end}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        dayLayoutAlgorithm={calendarDayLayout as any}
-        eventPropGetter={(event) =>
-          event.resourceId === "external"
-            ? {}
-            : {
-                className: event.resource.isRunning ? "rbc-event-running" : undefined,
-                style: {
-                  backgroundColor: "transparent",
-                  border: event.resource.isDraft
-                    ? "1px dashed var(--track-accent-outline)"
-                    : "none",
-                  color: "var(--track-text)",
-                  opacity: event.resource.isDraft ? 0.7 : undefined,
-                },
-              }
-        }
-        events={events}
-        resources={CALENDAR_RESOURCES}
-        resourceGroupingLayout
-        formats={{
-          timeGutterFormat: (date: Date) => formatClockTime(date, timezone, timeFormat),
-        }}
-        localizer={calendarLocalizer}
-        max={maxTime}
-        messages={{
-          day: "Day",
-          next: "Next",
-          previous: "Previous",
-          today: "Today",
-          week: "Week",
-        }}
-        min={minTime}
-        onDrillDown={(date) => onSelectSubviewDate?.(formatDateIso(date))}
-        onEventDrop={({ event, start, end }: EventInteractionArgs<CalendarGridEvent>) => {
-          if (event.resourceId !== "entries") return;
-          const nextStart = new Date(start);
-          const nextEnd = new Date(end);
-          const minutesDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
-          // A drop is a MOVE: onMoveEntry already shifts both start and
-          // stop in a single PUT. Do NOT additionally fire onResizeEntry
-          // here — that would issue a second concurrent PUT computed from
-          // the stale pre-move snapshot, and last-write-wins would reset
-          // `start` back to the original.
-          if (minutesDelta !== 0) {
-            void onMoveEntry?.(event.id, minutesDelta);
+        <DnDCalendar
+          components={calendarComponents}
+          date={calendarDate}
+          defaultView={Views.WEEK}
+          getNow={() => new Date()}
+          draggableAccessor={(event) =>
+            event.resourceId === "entries" &&
+            !event.resource.isLocked &&
+            !event.resource.isRunning &&
+            !event.resource.isDraft
           }
-          (window as Window & { __calendarDragResult?: unknown }).__calendarDragResult = {
-            eventId: event.id,
-            minutesDelta,
-            start: nextStart.toISOString(),
-            end: nextEnd.toISOString(),
-          };
-        }}
-        onEventResize={({ end, event, start }: EventInteractionArgs<CalendarGridEvent>) => {
-          if (event.resourceId !== "entries") return;
-          const nextStart = new Date(start);
-          const nextEnd = new Date(end);
-          const startDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
-          const endDelta = Math.round((nextEnd.getTime() - event.end.getTime()) / 60_000);
-          if (startDelta !== 0) {
-            void onResizeEntry?.(event.id, "start", startDelta);
-          } else if (endDelta !== 0) {
-            void onResizeEntry?.(event.id, "end", endDelta);
+          endAccessor={(event) => event.end}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          dayLayoutAlgorithm={calendarDayLayout as any}
+          eventPropGetter={(event) =>
+            event.resourceId === "external"
+              ? {}
+              : {
+                  className: event.resource.isRunning ? "rbc-event-running" : undefined,
+                  style: {
+                    backgroundColor: "transparent",
+                    border: event.resource.isDraft
+                      ? "1px dashed var(--track-accent-outline)"
+                      : "none",
+                    color: "var(--track-text)",
+                    opacity: event.resource.isDraft ? 0.7 : undefined,
+                  },
+                }
           }
-        }}
-        onNavigate={() => undefined}
-        onSelectEvent={(event, nativeEvent) => {
-          const target = nativeEvent.currentTarget;
-          if (!(target instanceof HTMLElement)) return;
-          if (event.resourceId === "external") {
-            const rect = target.getBoundingClientRect();
-            setExternalPopoverState({ event, x: rect.right + 8, y: rect.top });
-            return;
+          events={events}
+          resources={hasExternalEvents ? CALENDAR_RESOURCES : undefined}
+          resourceGroupingLayout={hasExternalEvents}
+          formats={{
+            timeGutterFormat: (date: Date) => formatClockTime(date, timezone, timeFormat),
+          }}
+          localizer={calendarLocalizer}
+          max={maxTime}
+          messages={{
+            day: "Day",
+            next: "Next",
+            previous: "Previous",
+            today: "Today",
+            week: "Week",
+          }}
+          min={minTime}
+          onDrillDown={(date) => onSelectSubviewDate?.(formatDateIso(date))}
+          onEventDrop={({ event, start, end }: EventInteractionArgs<CalendarGridEvent>) => {
+            if (event.resourceId !== "entries") return;
+            const nextStart = new Date(start);
+            const nextEnd = new Date(end);
+            const minutesDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
+            // A drop is a MOVE: onMoveEntry already shifts both start and
+            // stop in a single PUT. Do NOT additionally fire onResizeEntry
+            // here — that would issue a second concurrent PUT computed from
+            // the stale pre-move snapshot, and last-write-wins would reset
+            // `start` back to the original.
+            if (minutesDelta !== 0) {
+              void onMoveEntry?.(event.id, minutesDelta);
+            }
+            (window as Window & { __calendarDragResult?: unknown }).__calendarDragResult = {
+              eventId: event.id,
+              minutesDelta,
+              start: nextStart.toISOString(),
+              end: nextEnd.toISOString(),
+            };
+          }}
+          onEventResize={({ end, event, start }: EventInteractionArgs<CalendarGridEvent>) => {
+            if (event.resourceId !== "entries") return;
+            const nextStart = new Date(start);
+            const nextEnd = new Date(end);
+            const startDelta = Math.round((nextStart.getTime() - event.start.getTime()) / 60_000);
+            const endDelta = Math.round((nextEnd.getTime() - event.end.getTime()) / 60_000);
+            if (startDelta !== 0) {
+              void onResizeEntry?.(event.id, "start", startDelta);
+            } else if (endDelta !== 0) {
+              void onResizeEntry?.(event.id, "end", endDelta);
+            }
+          }}
+          onNavigate={() => undefined}
+          onSelectEvent={(event, nativeEvent) => {
+            const target = nativeEvent.currentTarget;
+            if (!(target instanceof HTMLElement)) return;
+            if (event.resourceId === "external") {
+              const rect = target.getBoundingClientRect();
+              setExternalPopoverState({ event, x: rect.right + 8, y: rect.top });
+              return;
+            }
+            onEditEntry?.(event.entry, target.getBoundingClientRect());
+          }}
+          onSelectSlot={(slotInfo: SlotInfo) => {
+            // A drag started in the external-calendar lane still creates a
+            // draft time entry (always rendered in the entries lane) — the
+            // lane only controls which events are shown side-by-side, not
+            // where new entries can be created.
+            if (slotInfo.start && slotInfo.end) {
+              onSelectSlot?.({ end: slotInfo.end, start: slotInfo.start });
+            }
+          }}
+          resizable
+          resizableAccessor={(event) =>
+            event.resourceId === "entries" &&
+            !event.resource.isLocked &&
+            !event.resource.isRunning &&
+            !event.resource.isDraft
           }
-          onEditEntry?.(event.entry, target.getBoundingClientRect());
-        }}
-        onSelectSlot={(slotInfo: SlotInfo) => {
-          if (slotInfo.resourceId != null && slotInfo.resourceId !== "entries") return;
-          if (slotInfo.start && slotInfo.end) {
-            onSelectSlot?.({ end: slotInfo.end, start: slotInfo.start });
-          }
-        }}
-        resizable
-        resizableAccessor={(event) =>
-          event.resourceId === "entries" &&
-          !event.resource.isLocked &&
-          !event.resource.isRunning &&
-          !event.resource.isDraft
-        }
-        scrollToTime={scrollToTime}
-        selectable
-        startAccessor={(event) => event.start}
-        step={30}
-        timeslots={2}
-        toolbar={false}
-        onView={() => undefined}
-        view={currentView}
-        views={[Views.WEEK, Views.WORK_WEEK, Views.DAY]}
-      />
+          scrollToTime={scrollToTime}
+          selectable
+          startAccessor={(event) => event.start}
+          step={30}
+          timeslots={2}
+          toolbar={false}
+          onView={() => undefined}
+          view={currentView}
+          views={[Views.WEEK, Views.WORK_WEEK, Views.DAY]}
+        />
       </CalendarOnStartEntryContext.Provider>
       {contextMenuState ? (
         <CalendarEntryContextMenu

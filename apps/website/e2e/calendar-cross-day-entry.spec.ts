@@ -164,26 +164,32 @@ test.describe("Calendar: cross-day (overnight) time entries", () => {
         () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
       );
 
-      // Column index is taken among the time-entry lane's day-slots specifically
-      // (not raw DOM siblings): the calendar also renders a narrower external-
-      // calendar-event lane per day (see CalendarView.tsx's `resources` prop),
-      // which nests each `.rbc-day-slot` one level deeper than a plain 7-column
-      // grid would.
+      // Column index is taken among the time-entry lane's day-slots specifically.
+      // When the user has external-calendar events this week, the calendar
+      // also renders a narrower external-calendar-event lane per day (see
+      // CalendarView.tsx's `resources` prop), which nests each `.rbc-day-slot`
+      // one level deeper than a plain 7-column grid would — so prefer the
+      // `data-resource-id="entries"` slots, falling back to plain
+      // `.rbc-day-slot` when no external lane is rendered.
       const firstCol = await timeGridEntries.first().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
-        return slot
-          ? Array.from(
-              document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
-            ).indexOf(slot)
-          : -1;
+        if (!slot) return -1;
+        const entryLaneSlots = document.querySelectorAll(
+          '.rbc-day-slot[data-resource-id="entries"]',
+        );
+        const daySlots =
+          entryLaneSlots.length > 0 ? entryLaneSlots : document.querySelectorAll(".rbc-day-slot");
+        return Array.from(daySlots).indexOf(slot);
       });
       const secondCol = await timeGridEntries.last().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
-        return slot
-          ? Array.from(
-              document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
-            ).indexOf(slot)
-          : -1;
+        if (!slot) return -1;
+        const entryLaneSlots = document.querySelectorAll(
+          '.rbc-day-slot[data-resource-id="entries"]',
+        );
+        const daySlots =
+          entryLaneSlots.length > 0 ? entryLaneSlots : document.querySelectorAll(".rbc-day-slot");
+        return Array.from(daySlots).indexOf(slot);
       });
 
       expect(firstCol).not.toBe(-1);
@@ -201,10 +207,11 @@ test.describe("Calendar: cross-day (overnight) time entries", () => {
       const colInfo = await timeGridEntries.first().evaluate((el) => {
         const slot = el.closest(".rbc-day-slot");
         if (!slot) return { index: -1, total: 0 };
-        const entryLaneSlots = Array.from(
-          document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]'),
+        const entryLaneEls = document.querySelectorAll('.rbc-day-slot[data-resource-id="entries"]');
+        const daySlots = Array.from(
+          entryLaneEls.length > 0 ? entryLaneEls : document.querySelectorAll(".rbc-day-slot"),
         );
-        return { index: entryLaneSlots.indexOf(slot), total: entryLaneSlots.length };
+        return { index: daySlots.indexOf(slot), total: daySlots.length };
       });
       // Should be the last day-slot column (regardless of gutter columns)
       expect(colInfo.index).toBe(colInfo.total - 1);
