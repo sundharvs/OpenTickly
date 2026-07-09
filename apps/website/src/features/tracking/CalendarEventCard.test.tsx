@@ -37,7 +37,8 @@ function makeDraftEvent(start: string, stop: string): CalendarEvent {
     end: new Date(stop),
     entry,
     id: DRAFT_ENTRY_ID,
-    resource: { color: "#000000", isDraft: true, isLocked: false, isRunning: false },
+    resource: { color: "#000000", isDraft: true, isLocked: false, isRunning: false, kind: "entry" },
+    resourceId: "entries",
     start: new Date(start),
     title: "",
   };
