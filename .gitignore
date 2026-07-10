@@ -29,6 +29,16 @@ dist-ssr
 *.sw?
 
 example
+
+# Docker Compose project .env (secrets for self-hosted deployment: postgres/
+# redis passwords, Cloudflare API token). `.env.local` covers native dev.
+.env
+!.env.example
+
+# Personal deployment overlay (real domain/IP/tokens) — not the shared
+# self-hosting template (docker-compose.yml).
+docker-compose.override.yml
+
 .agent
 .agents
 !.agents/

@@ -30,6 +30,9 @@ registerRoute(
       /^\/insights\//,
       /^\/import\//,
       /^\/admin\//,
+      /^\/integrations\/calendar\/callback\//,
+      /^\/auth\/saml2\//,
+      /^\/files\//,
     ],
   }),
 );
